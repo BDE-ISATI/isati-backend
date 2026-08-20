@@ -1,0 +1,16 @@
+
+pb_data/
+
+pb_data/types.d.ts
+
+.env
+.env.local
+.env.*.local
+!.env.example
+
+*.log
+
+node_modules/
+
+.DS_Store
+Thumbs.db
