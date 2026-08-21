@@ -26,7 +26,7 @@ function sendPasswordEmail(e) {
 
 
 function sendDeletedAccountEmail(originalEmail, originalUsername) {
-
+  
   const html = $template.loadFiles(
     `${__hooks}/views/email-layout.html`,
     `${__hooks}/views/account-deleted.html`,
@@ -44,6 +44,14 @@ function sendDeletedAccountEmail(originalEmail, originalUsername) {
   $app.newMailClient().send(message)
 
 }
+
+
+
+
+
+
+
+
 
 
 module.exports = { sendPasswordEmail , sendDeletedAccountEmail}

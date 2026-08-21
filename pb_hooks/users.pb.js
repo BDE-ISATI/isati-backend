@@ -1,6 +1,7 @@
 /// <reference path="../pb_data/types.d.ts" />
 
 onRecordUpdateRequest((e) => {
+
     if (e.hasSuperuserAuth()) {
         return e.next()
     }
@@ -24,3 +25,13 @@ onRecordUpdateRequest((e) => {
     sendPasswordEmail(e)
 
 }, 'users')
+
+
+
+
+
+
+
+
+
+

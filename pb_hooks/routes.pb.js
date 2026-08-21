@@ -13,9 +13,11 @@ routerAdd("POST", "/api/isati/delete-user", (e) => {
   let record
 
   if (isSelf) {
-    throw new BadRequestError("Invalid password.", {
-      "password": new ValidationError("invalid_password", "Mot de passe incorrect.")
-    })
+    if (!e.auth?.validatePassword(data.password)) {
+      throw new BadRequestError("Invalid password.", {
+        "password": new ValidationError("invalid_password", "Mot de passe incorrect.")
+      })
+    }
     record = e.auth
   } else {
     const { hasPermission } = require(`${__hooks}/utils/permissions.js`)
