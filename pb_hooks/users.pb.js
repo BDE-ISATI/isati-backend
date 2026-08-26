@@ -8,7 +8,6 @@ onRecordUpdateRequest((e) => {
 
     const { checkUpdateUsernameValidation, touchUsernameChangedAt } = require(`${__hooks}/utils/username.js`)
     const { hasPermission, checkNoUnauthorizedFieldChanges, checkUserId } = require(`${__hooks}/utils/permissions.js`)
-    const { checkUpdateAvatarValidation } = require(`${__hooks}/utils/avatar.js`)
     const { sendPasswordEmail } = require(`${__hooks}/utils/mail.js`)
 
 

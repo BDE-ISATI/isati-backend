@@ -1,5 +1,5 @@
 function hasPermission(e, resource, action ){
-  // Vérifie si un utilisateur possède la permission d'intéragir avec une ressource
+
   const user = e.auth
   if (!user) { 
     throw new UnauthorizedError("Not authenticated.", {
