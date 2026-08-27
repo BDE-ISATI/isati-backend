@@ -18,7 +18,6 @@ onRecordEnrich((e) => {
     e.record.hide("image")
     e.record.hide("phase")
     e.record.hide("scope")
-    e.record.hide("type")
     e.record.hide("points")
     e.record.hide("end_date")
     e.record.hide("proof_type")
@@ -30,3 +29,43 @@ onRecordEnrich((e) => {
   e.next()
 
 }, "challenges")
+
+
+
+onRecordCreateRequest((e) => {
+
+  if (e.hasSuperuserAuth()) {
+    return e.next()
+  }
+
+  const { checkPermission } = require(`${__hooks}/utils/permissions.js`)
+  checkPermission(e,"challenges", "create")
+  e.next()
+
+}, "challenges")
+
+
+onRecordUpdateRequest((e) => {
+
+  if (e.hasSuperuserAuth()) {
+    return e.next()
+  }
+
+  const { checkPermission } = require(`${__hooks}/utils/permissions.js`)
+  checkPermission(e,"challenges", "update")
+  e.next()
+
+}, "challenges")
+
+onRecordDeleteRequest((e) => {
+
+  if (e.hasSuperuserAuth()) {
+    return e.next()
+  }
+
+  const { checkPermission } = require(`${__hooks}/utils/permissions.js`)
+  checkPermission(e,"challenges", "delete")
+  e.next()
+
+}, "challenges")
+

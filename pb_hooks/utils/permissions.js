@@ -37,7 +37,7 @@ function checkPermission(e,resource,action) {
   //Renvoie une erreur s'il l'utilisateur n'a pas la permission d'intéragir avec une ressource
   if (!hasPermission(e,resource,action)) {
     throw new ForbiddenError("Insufficient permissions.", {
-      "account": new ValidationError("insufficient_permissions", "You are not allowed to perform this action.")
+      [resource]: new ValidationError("insufficient_permissions", "You are not allowed to perform this action.")
     })
   }
 }

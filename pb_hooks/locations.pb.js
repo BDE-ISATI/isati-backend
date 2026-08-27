@@ -13,9 +13,45 @@ onRecordEnrich((e) => {
 
   if (e.record.getBool("hidden") && !canView) {
     e.record.hide("label")
-    e.record.hide("geo_point")
   }
 
+  e.next()
+
+}, "locations")
+  
+
+onRecordCreateRequest((e) => {
+
+  if (e.hasSuperuserAuth()) {
+    return e.next()
+  }
+
+  const { checkPermission } = require(`${__hooks}/utils/permissions.js`)
+  checkPermission(e,"locations", "create")
+  e.next()
+
+}, "locations")
+
+onRecordUpdateRequest((e) => {
+
+  if (e.hasSuperuserAuth()) {
+    return e.next()
+  }
+
+  const { checkPermission } = require(`${__hooks}/utils/permissions.js`)
+  checkPermission(e,"locations", "update")
+  e.next()
+
+}, "locations")
+
+onRecordDeleteRequest((e) => {
+
+  if (e.hasSuperuserAuth()) {
+    return e.next()
+  }
+
+  const { checkPermission } = require(`${__hooks}/utils/permissions.js`)
+  checkPermission(e,"locations", "delete")
   e.next()
 
 }, "locations")
