@@ -8,10 +8,10 @@ onRecordCreateRequest((e) => {
   }
 
   const { checkPermission } = require(`${__hooks}/utils/permissions.js`)
-  checkPermission(e,"challenge_categories", "create")
+  checkPermission(e,"weis", "create")
   e.next()
 
-}, "challenge_categories")
+}, "weis")
 
 
 onRecordUpdateRequest((e) => {
@@ -21,10 +21,10 @@ onRecordUpdateRequest((e) => {
   }
 
   const { checkPermission } = require(`${__hooks}/utils/permissions.js`)
-  checkPermission(e,"challenge_categories", "update")
+  checkPermission(e,"weis", "update")
   e.next()
 
-}, "challenge_categories")
+}, "weis")
 
 onRecordDeleteRequest((e) => {
 
@@ -33,8 +33,8 @@ onRecordDeleteRequest((e) => {
   }
 
   const { checkPermission } = require(`${__hooks}/utils/permissions.js`)
-  checkPermission(e,"challenge_categories", "delete")
+  checkPermission(e,"weis", "delete")
   e.next()
 
-}, "challenge_categories")
+}, "weis")
 
