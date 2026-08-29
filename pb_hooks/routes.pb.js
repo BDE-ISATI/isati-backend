@@ -105,7 +105,7 @@ routerAdd("POST","/api/isati/wei/{id_user}/register", (e) => {
       });
     }
 
-    if (target.getString("level") !== "ingenieur" || target.getString("school_year") !== "1") {
+    if (!isAdmin && (target.getString("level") !== "ingenieur" || target.getString("school_year") !== "1")) {
       throw new ForbiddenError("Insufficient permissions.", {
         account: new ValidationError("insufficient_permissions","Le WEI est réservé aux étudiants de première année du cycle ingénieur.")
       });
@@ -196,6 +196,214 @@ routerAdd("POST","/api/isati/wei/{id_user}/register", (e) => {
       role: created.getString("role"),
       registered_at: created.getString("registered_at"),
     });
+  },
+  $apis.requireAuth()
+);
+
+// Gestion des membres d'une équipe (panel WEI)
+
+routerAdd("POST", "/api/isati/teams/{id_team}/members/{id_user}", (e) => {
+
+    const { syncTeamLeaderRole } = require(`${__hooks}/utils/teamLeader.js`);
+    const { teamMemberContext, memberPayload } = require(`${__hooks}/utils/weiTeams.js`);
+
+    const data = new DynamicModel({ role: "" });
+    try {
+      e.bindBody(data);
+    } catch (_) {
+      data.role = "";
+    }
+
+    const role = data.role === "team_leader" ? "team_leader" : "student";
+
+    const { team, target } = teamMemberContext(e, "create");
+
+    const now = new DateTime();
+    const nowStr = now.string();
+
+    if (target.getString("account_type") === "deleted") {
+      throw new ForbiddenError("Account deleted.", {
+        account: new ValidationError("account_deleted", "Ce compte n'existe plus.")
+      });
+    }
+
+    if (!target.getBool("verified")) {
+      throw new ForbiddenError("Email not verified.", {
+        account: new ValidationError("email_not_verified", "Cette adresse email n'a pas été vérifiée.")
+      });
+    }
+
+    let sanction = null;
+    try {
+      sanction = $app.findFirstRecordByFilter(
+        "status",
+        'user = {:userId} && (issued_at = "" || issued_at <= {:now}) && (expires_at = "" || expires_at > {:now})',
+        { userId: target.id, now: nowStr }
+      );
+    } catch (_) {
+      sanction = null;
+    }
+
+    if (sanction) {
+      throw new ForbiddenError("Active sanction.", {
+        account: new ValidationError("account_suspended", "Ce compte fait l'objet d'une sanction en cours.")
+      });
+    }
+
+    let saved;
+
+    $app.runInTransaction((txApp) => {
+
+      let participation = null;
+      try {
+        participation = txApp.findFirstRecordByFilter(
+          "participations",
+          "wei = {:weiId} && user = {:userId}",
+          { weiId: team.getString("wei"), userId: target.id }
+        );
+      } catch (_) {
+        participation = null;
+      }
+
+      if (participation) {
+        const currentTeam = participation.getString("team");
+        if (currentTeam && currentTeam !== team.id) {
+          throw new BadRequestError("Already in a team.", {
+            teams: new ValidationError("already_in_team", "Cette personne appartient déjà à une autre équipe.")
+          });
+        }
+      } else {
+        const collection = txApp.findCollectionByNameOrId("participations");
+        participation = new Record(collection);
+        participation.set("wei", team.getString("wei"));
+        participation.set("user", target.id);
+        participation.set("registered_at", now);
+      }
+
+      participation.set("team", team.id);
+      participation.set("state", "assigned");
+      participation.set("role", role);
+
+      try {
+        txApp.save(participation);
+      } catch (err) {
+        const message = String(err && err.message ? err.message : err);
+        if (message.indexOf("UNIQUE") !== -1 || message.indexOf("not_unique") !== -1) {
+          throw new BadRequestError("Already in a team.", {
+            teams: new ValidationError("already_in_team", "Cette personne appartient déjà à une autre équipe.")
+          });
+        }
+        throw err;
+      }
+
+      syncTeamLeaderRole(txApp, target.id);
+
+      saved = participation;
+    });
+
+    return e.json(200, memberPayload(saved));
+
+  },
+  $apis.requireAuth()
+);
+
+
+// Retirer un utilisateur de son équipe
+routerAdd("DELETE", "/api/isati/teams/{id_team}/members/{id_user}", (e) => {
+
+    const { syncTeamLeaderRole } = require(`${__hooks}/utils/teamLeader.js`);
+    const { teamMemberContext, memberPayload } = require(`${__hooks}/utils/weiTeams.js`);
+
+    const { team, target } = teamMemberContext(e, "update");
+
+    let saved;
+
+    $app.runInTransaction((txApp) => {
+
+      let participation = null;
+      try {
+        participation = txApp.findFirstRecordByFilter(
+          "participations",
+          "team = {:teamId} && user = {:userId}",
+          { teamId: team.id, userId: target.id }
+        );
+      } catch (_) {
+        participation = null;
+      }
+
+      if (!participation) {
+        throw new NotFoundError("Member not found.", {
+          teams: new ValidationError("member_not_found", "Cette personne ne fait pas partie de cette équipe.")
+        });
+      }
+
+      participation.set("team", "");
+      participation.set("state", "pending");
+      participation.set("role", "student");
+
+      txApp.save(participation);
+
+      syncTeamLeaderRole(txApp, target.id);
+
+      saved = participation;
+    });
+
+    return e.json(200, memberPayload(saved));
+
+  },
+  $apis.requireAuth()
+);
+
+
+// Changer le rôle d'un membre d'équipe
+routerAdd("PATCH", "/api/isati/teams/{id_team}/members/{id_user}", (e) => {
+
+    const { syncTeamLeaderRole } = require(`${__hooks}/utils/teamLeader.js`);
+    const { teamMemberContext, memberPayload } = require(`${__hooks}/utils/weiTeams.js`);
+
+    const data = new DynamicModel({ role: "" });
+    e.bindBody(data);
+
+    if (data.role !== "student" && data.role !== "team_leader") {
+      throw new BadRequestError("Invalid role.", {
+        role: new ValidationError("invalid_role", "Rôle invalide.")
+      });
+    }
+
+    const { team, target } = teamMemberContext(e, "update");
+
+    let saved;
+
+    $app.runInTransaction((txApp) => {
+
+      let participation = null;
+      try {
+        participation = txApp.findFirstRecordByFilter(
+          "participations",
+          "team = {:teamId} && user = {:userId}",
+          { teamId: team.id, userId: target.id }
+        );
+      } catch (_) {
+        participation = null;
+      }
+
+      if (!participation) {
+        throw new NotFoundError("Member not found.", {
+          teams: new ValidationError("member_not_found", "Cette personne ne fait pas partie de cette équipe.")
+        });
+      }
+
+      participation.set("role", data.role);
+
+      txApp.save(participation);
+
+      syncTeamLeaderRole(txApp, target.id);
+
+      saved = participation;
+    });
+
+    return e.json(200, memberPayload(saved));
+
   },
   $apis.requireAuth()
 );

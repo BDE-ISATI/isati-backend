@@ -1,18 +1,25 @@
 /// <reference path="..\pb_data\types.d.ts" />
 
 
-const MAX_PROOF_BYTES = 8 * 1024 * 1024
-
-
 onRecordCreateRequest((e) => {
 
   if (e.hasSuperuserAuth()) {
+    if (!e.record.getString("reviewed_at") &&
+        (e.record.getString("status") === "accepted" || e.record.getString("status") === "refused")) {
+      e.record.set("reviewed_at", new Date().toISOString())
+    }
+
     return e.next()
   }
 
   const { hasPermission } = require(`${__hooks}/utils/permissions.js`)
 
   if (hasPermission(e, "validations", "create")) {
+    if (!e.record.getString("reviewed_at") &&
+        (e.record.getString("status") === "accepted" || e.record.getString("status") === "refused")) {
+      e.record.set("reviewed_at", new Date().toISOString())
+    }
+
     return e.next()
   }
 
@@ -60,13 +67,19 @@ onRecordCreateRequest((e) => {
     })
   }
 
+  if (participation.getString("role") !== "student") {
+    throw new ForbiddenError("Team leaders cannot submit proofs.", {
+      validations: new ValidationError("leader_cannot_submit", "Les chefs d'équipe ne peuvent pas envoyer de preuve.")
+    })
+  }
+
   e.record.set("team", participation.getString("team"))
 
   let existing = null
   try {
     existing = $app.findFirstRecordByFilter(
       "validations",
-      'challenge = {:challengeId} && user = {:userId} && select != "refused"',
+      'challenge = {:challengeId} && user = {:userId} && status != "refused"',
       { challengeId: challenge.id, userId: user.id }
     )
   } catch (_) {
@@ -103,7 +116,9 @@ onRecordCreateRequest((e) => {
         })
       }
 
-      if (upload.size && upload.size > MAX_PROOF_BYTES) {
+      const maxProofBytes = 8 * 1024 * 1024
+
+      if (upload.size && upload.size > maxProofBytes) {
         throw new BadRequestError("Proof too large.", {
           proof_file: new ValidationError("validation_file_size_limit", "Ce fichier est trop lourd.")
         })
@@ -117,7 +132,7 @@ onRecordCreateRequest((e) => {
     })
   }
 
-  e.record.set("select", "pending")
+  e.record.set("status", "pending")
   e.record.set("submitted_at", now.toISOString())
   e.record.set("validator", "")
   e.record.set("reviewed_at", "")
@@ -132,11 +147,70 @@ onRecordCreateRequest((e) => {
 onRecordUpdateRequest((e) => {
 
   if (e.hasSuperuserAuth()) {
+    if (!e.record.getString("reviewed_at") &&
+        (e.record.getString("status") === "accepted" || e.record.getString("status") === "refused")) {
+      e.record.set("reviewed_at", new Date().toISOString())
+    }
+
     return e.next()
   }
 
-  const { checkPermission } = require(`${__hooks}/utils/permissions.js`)
+  const { checkPermission, checkNoUnauthorizedFieldChanges } = require(`${__hooks}/utils/permissions.js`)
+
   checkPermission(e, "validations", "update")
+  checkNoUnauthorizedFieldChanges(e, ["status", "reason", "points_awarded"])
+
+  if (e.record.getString("user") === e.auth.id) {
+    throw new ForbiddenError("Cannot review own validation.", {
+      validations: new ValidationError("own_validation", "Vous ne pouvez pas valider votre propre preuve.")
+    })
+  }
+
+  const status = e.record.getString("status")
+
+  if (status !== "accepted" && status !== "refused") {
+    throw new BadRequestError("Invalid status.", {
+      status: new ValidationError("invalid_status", "Statut de validation invalide.")
+    })
+  }
+
+  if (status === "refused") {
+    if (!e.record.getString("reason").trim()) {
+      throw new BadRequestError("Missing reason.", {
+        reason: new ValidationError("validation_required", "Un motif est requis pour refuser cette preuve.")
+      })
+    }
+    e.record.set("points_awarded", 0)
+  }
+
+  if (status === "accepted") {
+    let challenge = null
+    try {
+      challenge = $app.findRecordById("challenges", e.record.getString("challenge"))
+    } catch (_) {
+      challenge = null
+    }
+
+    if (!challenge) {
+      throw new NotFoundError("Challenge not found.", {
+        challenge: new ValidationError("challenge_not_found", "Ce défi n'existe plus.")
+      })
+    }
+
+    const points = e.record.getInt("points_awarded")
+
+    if (!Number.isInteger(points) || points < 0) {
+      throw new BadRequestError("Invalid points.", {
+        points_awarded: new ValidationError("invalid_points", "Le nombre de points attribués est invalide.")
+      })
+    }
+
+    e.record.set("points_awarded", points)
+  }
+
+  e.record.set("validator", e.auth.id)
+  e.record.set("reviewed_at", new Date().toISOString())
+
   e.next()
 
 }, "validations")
@@ -171,6 +245,11 @@ onRecordEnrich((e) => {
   if (!isOwner && !canView && !e.record.getBool("public")) {
     e.record.hide("proof_file")
     e.record.hide("proof_text")
+  }
+
+  if (!isOwner && !canView) {
+    e.record.hide("reason")
+    e.record.hide("validator")
   }
 
   e.next()

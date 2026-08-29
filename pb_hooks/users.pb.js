@@ -34,3 +34,23 @@ onRecordUpdateRequest((e) => {
 
 
 
+
+
+onRecordEnrich((e) => {
+
+    const info = e.requestInfo
+
+    if (info && info.hasSuperuserAuth()) {
+        e.record.unhide("email")
+        return e.next()
+    }
+
+    const { hasPermission } = require(`${__hooks}/utils/permissions.js`)
+
+    if (info && info.auth && hasPermission(info, "wei_panel", "view")) {
+        e.record.unhide("email")
+    }
+
+    e.next()
+
+}, 'users')

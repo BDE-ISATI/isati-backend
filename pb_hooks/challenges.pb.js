@@ -69,3 +69,20 @@ onRecordDeleteRequest((e) => {
 
 }, "challenges")
 
+
+onRecordsListRequest((e) => {
+
+  const { checkWeiAccess } = require(`${__hooks}/utils/weiAccess.js`)
+  checkWeiAccess(e, "challenges")
+  e.next()
+
+}, "challenges")
+
+
+onRecordViewRequest((e) => {
+
+  const { checkWeiAccess } = require(`${__hooks}/utils/weiAccess.js`)
+  checkWeiAccess(e, "challenges")
+  e.next()
+
+}, "challenges")
