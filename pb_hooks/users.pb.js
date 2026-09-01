@@ -10,6 +10,7 @@ onRecordUpdateRequest((e) => {
     const { sendPasswordEmail } = require(`${__hooks}/utils/mail.js`)
 
 
+
     if (!hasPermission(e, "users", "update")) {
         checkNoUnauthorizedFieldChanges(e, ["username","avatar","password","school_year","level","speciality"])
         checkUserId(e)
@@ -26,28 +27,19 @@ onRecordUpdateRequest((e) => {
 
 
 
-
-
-
-
-
-
-
-
-
 onRecordEnrich((e) => {
 
     const info = e.requestInfo
 
     if (info && info.hasSuperuserAuth()) {
-        e.record.unhide("email")
+        e.record.ignoreEmailVisibility(true)
         return e.next()
     }
 
     const { hasPermission } = require(`${__hooks}/utils/permissions.js`)
 
     if (info && info.auth && hasPermission(info, "wei_panel", "view")) {
-        e.record.unhide("email")
+        e.record.ignoreEmailVisibility(true)
     }
 
     e.next()
