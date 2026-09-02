@@ -131,15 +131,23 @@ routerAdd("POST","/api/isati/wei/{id_user}/register", (e) => {
       });
     }
 
-    const filter = isAdmin
-      ? 'weekend_ends_at != "" && weekend_ends_at > {:now}'
-      : 'registration_opens_at != "" && registration_opens_at <= {:now} && ' +
-        'registration_closes_at != "" && registration_closes_at > {:now}';
-
-    const weis = $app.findRecordsByFilter("weis", filter, "-year", 1, 0, { now: nowStr });
+    const weis = $app.findRecordsByFilter(
+      "weis",
+      'weekend_ends_at != "" && weekend_ends_at > {:now}',
+      "-year", 1, 0, { now: nowStr }
+    );
     const wei = weis.length ? weis[0] : null;
 
     if (!wei) {
+      throw new BadRequestError("Registrations closed.", {
+        wei: new ValidationError("registrations_closed","Les inscriptions au WEI ne sont pas ouvertes.")
+      });
+    }
+
+    const opensAt = wei.getString("registration_opens_at");
+    const startsAt = wei.getString("weekend_starts_at");
+
+    if (!opensAt || opensAt > nowStr || (startsAt && startsAt <= nowStr)) {
       throw new BadRequestError("Registrations closed.", {
         wei: new ValidationError("registrations_closed","Les inscriptions au WEI ne sont pas ouvertes.")
       });
