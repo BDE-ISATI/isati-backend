@@ -73,20 +73,33 @@ onRecordCreateRequest((e) => {
     })
   }
 
-  e.record.set("team", participation.getString("team"))
+  const teamId = participation.getString("team")
+  const isTeamScope = challenge.getString("scope") === "team"
+
+  e.record.set("team", teamId)
+
+  const existingFilter = isTeamScope
+    ? 'challenge = {:challengeId} && team = {:teamId} && status != "refused"'
+    : 'challenge = {:challengeId} && user = {:userId} && status != "refused"'
+
+  const existingParams = isTeamScope
+    ? { challengeId: challenge.id, teamId: teamId }
+    : { challengeId: challenge.id, userId: user.id }
 
   let existing = null
   try {
-    existing = $app.findFirstRecordByFilter(
-      "validations",
-      'challenge = {:challengeId} && user = {:userId} && status != "refused"',
-      { challengeId: challenge.id, userId: user.id }
-    )
+    existing = $app.findFirstRecordByFilter("validations", existingFilter, existingParams)
   } catch (_) {
     existing = null
   }
 
   if (existing) {
+    if (isTeamScope) {
+      throw new ForbiddenError("Already submitted by team.", {
+        validations: new ValidationError("team_already_submitted", "Une preuve a déjà été envoyée par ton équipe pour ce défi.")
+      })
+    }
+
     throw new ForbiddenError("Already submitted.", {
       validations: new ValidationError("already_submitted", "Vous avez déjà envoyé une preuve pour ce défi.")
     })
