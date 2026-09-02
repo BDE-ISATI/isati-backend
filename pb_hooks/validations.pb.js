@@ -93,7 +93,8 @@ onRecordCreateRequest((e) => {
   }
 
   const proofTypes = challenge.get("proof_type") || []
-  const hasFile = !!e.record.get("proof_file")
+  const uploads = [].concat(e.record.get("proof_file") || []).filter((upload) => !!upload)
+  const hasFile = uploads.length > 0
   const hasText = !!e.record.getString("proof_text")
 
   if (hasText && proofTypes.indexOf("link") === -1) {
@@ -103,9 +104,16 @@ onRecordCreateRequest((e) => {
   }
 
   if (hasFile) {
-    const uploads = [].concat(e.record.get("proof_file"))
+    const maxProofs = challenge.getInt("proof_count") || 1
+
+    if (uploads.length > maxProofs) {
+      throw new BadRequestError("Too many proof files.", {
+        proof_file: new ValidationError("too_many_files", "Vous avez joint trop de fichiers pour ce défi.")
+      })
+    }
+
     for (const upload of uploads) {
-      if (!upload || !upload.originalName) continue
+      if (!upload.originalName) continue
 
       const isVideo = /\.(mp4|mov|m4v|webm|avi|mkv)$/i.test(upload.originalName)
       const kind = isVideo ? "video" : "image"

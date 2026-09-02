@@ -26,12 +26,12 @@ cronAdd("purge_proofs", "0 3 * * *", () => {
   for (const wei of weis) {
     const validations = $app.findRecordsByFilter(
       "validations",
-      'challenge.wei = {:weiId} && archived != true && proof_file != ""',
+      'challenge.wei = {:weiId} && archived != true && proof_file:length > 0',
       "-created", 500, 0,
       { weiId: wei.id }
     )
     for (const validation of validations) {
-      validation.set("proof_file", "")
+      validation.set("proof_file", [])
       $app.save(validation)
     }
   }
