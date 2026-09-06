@@ -1,5 +1,117 @@
 
 
+routerAdd("POST", "/api/isati/register", (e) => {
+
+  const ALLOWED_EMAIL_DOMAINS = ["univ-rennes.fr", "etudiant.univ-rennes.fr"]
+  const USERNAME_PATTERN = /^[a-zA-Z0-9_-]+$/
+
+  const data = new DynamicModel({
+    username: "",
+    email: "",
+    password: "",
+    passwordConfirm: ""
+  })
+  e.bindBody(data)
+
+  const username = (data.username || "").trim()
+  const email = (data.email || "").trim()
+
+  if (!username) {
+    throw new BadRequestError("Missing username.", {
+      username: new ValidationError("validation_required", "Ce champ est requis.")
+    })
+  }
+
+  if (username.length > 30 || !USERNAME_PATTERN.test(username)) {
+    throw new BadRequestError("Invalid username.", {
+      username: new ValidationError("validation_invalid_username", "Nom d'utilisateur invalide.")
+    })
+  }
+
+  if (!email) {
+    throw new BadRequestError("Missing email.", {
+      email: new ValidationError("validation_required", "Ce champ est requis.")
+    })
+  }
+
+  const domain = (email.split("@")[1] || "").toLowerCase()
+
+  if (ALLOWED_EMAIL_DOMAINS.indexOf(domain) === -1) {
+    throw new BadRequestError("Invalid email domain.", {
+      email: new ValidationError("validation_invalid_email", "Adresse email invalide.")
+    })
+  }
+
+  if (!data.password) {
+    throw new BadRequestError("Missing password.", {
+      password: new ValidationError("validation_required", "Ce champ est requis.")
+    })
+  }
+
+  if (data.password !== data.passwordConfirm) {
+    throw new BadRequestError("Passwords mismatch.", {
+      passwordConfirm: new ValidationError("validation_values_mismatch", "Les mots de passe ne correspondent pas.")
+    })
+  }
+
+  let existing = null
+  try {
+    existing = $app.findFirstRecordByFilter("users", "username = {:username}", { username: username })
+  } catch (_) {
+    existing = null
+  }
+
+  if (existing) {
+    throw new BadRequestError("Username already taken.", {
+      username: new ValidationError("validation_not_unique", "Nom d'utilisateur est déjà utilisé.")
+    })
+  }
+
+  try {
+    existing = $app.findFirstRecordByFilter("users", "email = {:email}", { email: email })
+  } catch (_) {
+    existing = null
+  }
+
+  if (existing) {
+    throw new BadRequestError("Email already used.", {
+      email: new ValidationError("validation_not_unique", "Cette adresse email est déjà utilisée.")
+    })
+  }
+
+  const collection = $app.findCollectionByNameOrId("users")
+  const record = new Record(collection)
+
+  record.set("username", username)
+  record.set("email", email)
+  record.set("password", data.password)
+  record.set("passwordConfirm", data.passwordConfirm)
+
+  record.set("roles", [])
+  record.set("account_type", "eleve")
+  record.set("verified", false)
+
+  try {
+    $app.save(record)
+  } catch (err) {
+    const message = String(err && err.message ? err.message : err)
+
+    if (message.indexOf("UNIQUE") !== -1 || message.indexOf("not_unique") !== -1) {
+      throw new BadRequestError("Already registered.", {
+        email: new ValidationError("validation_not_unique", "Cette adresse email est déjà utilisée.")
+      })
+    }
+
+    throw new BadRequestError("Registration failed.", {
+      account: new ValidationError("registration_failed", "L'inscription a échoué. Veuillez réessayer.")
+    })
+  }
+
+  return e.json(200, { id: record.id, email: record.getString("email") })
+
+})
+
+
 routerAdd("POST", "/api/isati/delete-user", (e) => {
   const data = new DynamicModel({
     password: "",

@@ -116,6 +116,12 @@ onRecordCreateRequest((e) => {
     })
   }
 
+  if (hasText && !/^https:\/\//i.test(e.record.getString("proof_text").trim())) {
+    throw new BadRequestError("Invalid proof link.", {
+      proof_text: new ValidationError("validation_is_url", "Lien invalide.")
+    })
+  }
+
   if (hasFile) {
     const maxProofs = challenge.getInt("proof_count") || 1
 
