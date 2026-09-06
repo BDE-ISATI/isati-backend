@@ -8,6 +8,7 @@ onRecordEnrich((e) => {
     e.record.hide("name")
     e.record.hide("description")
     e.record.hide("color")
+    e.record.hide("image")
     e.record.hide("faction")
   }
 
