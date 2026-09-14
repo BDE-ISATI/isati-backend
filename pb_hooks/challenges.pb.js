@@ -1,0 +1,88 @@
+
+onRecordEnrich((e) => {
+
+  const info = e.requestInfo
+
+  if (info && info.hasSuperuserAuth()) {
+    return e.next()
+  }
+
+  const { hasPermission } = require(`${__hooks}/utils/permissions.js`)
+
+  const canView = !!info && !!info.auth && hasPermission(info, "challenges", "view")
+  const isNotYetLive = new Date(e.record.get("start_date")) > new Date()
+
+  if (!canView && isNotYetLive) {
+    e.record.hide("difficulty")
+    e.record.hide("description")
+    e.record.hide("image")
+    e.record.hide("phase")
+    e.record.hide("scope")
+    e.record.hide("points")
+    e.record.hide("end_date")
+    e.record.hide("proof_type")
+    e.record.hide("category")
+    e.record.hide("location")
+    e.record.set("title", "Prochain defi")
+  }
+
+  e.next()
+
+}, "challenges")
+
+
+
+onRecordCreateRequest((e) => {
+
+  if (e.hasSuperuserAuth()) {
+    return e.next()
+  }
+
+  const { checkPermission } = require(`${__hooks}/utils/permissions.js`)
+  checkPermission(e,"challenges", "create")
+  e.next()
+
+}, "challenges")
+
+
+onRecordUpdateRequest((e) => {
+
+  if (e.hasSuperuserAuth()) {
+    return e.next()
+  }
+
+  const { checkPermission } = require(`${__hooks}/utils/permissions.js`)
+  checkPermission(e,"challenges", "update")
+  e.next()
+
+}, "challenges")
+
+onRecordDeleteRequest((e) => {
+
+  if (e.hasSuperuserAuth()) {
+    return e.next()
+  }
+
+  const { checkPermission } = require(`${__hooks}/utils/permissions.js`)
+  checkPermission(e,"challenges", "delete")
+  e.next()
+
+}, "challenges")
+
+
+onRecordsListRequest((e) => {
+
+  const { checkWeiAccess } = require(`${__hooks}/utils/weiAccess.js`)
+  checkWeiAccess(e, "challenges")
+  e.next()
+
+}, "challenges")
+
+
+onRecordViewRequest((e) => {
+
+  const { checkWeiAccess } = require(`${__hooks}/utils/weiAccess.js`)
+  checkWeiAccess(e, "challenges")
+  e.next()
+
+}, "challenges")

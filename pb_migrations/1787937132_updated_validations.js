@@ -1,0 +1,22 @@
+/// <reference path="../pb_data/types.d.ts" />
+migrate((app) => {
+  const collection = app.findCollectionByNameOrId("pbc_3894176766")
+
+  // update collection data
+  unmarshal({
+    "listRule": "@request.auth.id != \"\" && (status = \"accepted\" || user = @request.auth.id || @request.auth.roles.policies.id ?=   \"{ID}\" || @request.auth.roles.policies.id ?= \"bi7sjuv6ec55c4v\")",
+    "viewRule": "@request.auth.id != \"\" && (status = \"accepted\" || user = @request.auth.id || @request.auth.roles.policies.id ?=   \"{ID}\" || @request.auth.roles.policies.id ?= \"bi7sjuv6ec55c4v\")"
+  }, collection)
+
+  return app.save(collection)
+}, (app) => {
+  const collection = app.findCollectionByNameOrId("pbc_3894176766")
+
+  // update collection data
+  unmarshal({
+    "listRule": "@request.auth.id != \"\"",
+    "viewRule": "@request.auth.id != \"\""
+  }, collection)
+
+  return app.save(collection)
+})
