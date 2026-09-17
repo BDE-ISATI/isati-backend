@@ -121,7 +121,7 @@ onRecordsListRequest((e) => {
   checkWeiAccess(e, "teams")
   e.next()
 
-}, "teams", "team_scores", "participation_scores")
+}, "teams", "team_scores", "participation_scores", "wei_score_events")
 
 
 onRecordViewRequest((e) => {
@@ -130,4 +130,4 @@ onRecordViewRequest((e) => {
   checkWeiAccess(e, "teams")
   e.next()
 
-}, "teams", "team_scores", "participation_scores")
+}, "teams", "team_scores", "participation_scores", "wei_score_events")
