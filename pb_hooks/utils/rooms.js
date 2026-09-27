@@ -25,7 +25,6 @@ module.exports = {
     syncAllRooms: function () {
         const configRecords = $app.findAllRecords('listRooms');
         if (configRecords.length === 0) {
-            console.error("[ERREUR] Configuration introuvable dans 'listRooms'");
             return { status: "error", message: "Configuration manquante" };
         }
 
@@ -38,7 +37,7 @@ module.exports = {
             const rawString = config.getString("rooms_allowed");
             sallesValides = JSON.parse(rawString);
         } catch (e) {
-            console.error("Format JSON invalide dans listRooms");
+            $app.logger().error("Format JSON invalide dans listRooms");
         }
         
         let res;
@@ -53,18 +52,18 @@ module.exports = {
                 timeout: 30 
             });
         } catch (err) {
-            console.error("[SYNCHRO ERREUR] Impossible de joindre le serveur ICS :", err);
+            $app.logger().error("[SYNCHRO ERREUR] Impossible de joindre le serveur ICS :", err);
             return { status: "error", message: "Échec de connexion au serveur ICS" };
         }
 
         if (!res || res.statusCode !== 200) {
-            console.error(`[SYNCHRO ERREUR] Code HTTP invalide reçu : ${res ? res.statusCode : "inconnu"}`);
+            $app.logger().error(`[SYNCHRO ERREUR] Code HTTP invalide reçu : ${res ? res.statusCode : "inconnu"}`);
             return { status: "error", message: `Erreur serveur ICS : code ${res ? res.statusCode : "inconnu"}` };
         }
 
         const rawData = res.raw || "";
         if (!rawData.includes("BEGIN:VCALENDAR")) {
-            console.error("[SYNCHRO ERREUR] La réponse reçue n'est pas un calendrier valide (BEGIN:VCALENDAR manquant)");
+            $app.logger().error("[SYNCHRO ERREUR] La réponse reçue n'est pas un calendrier valide (BEGIN:VCALENDAR manquant)");
             return { status: "error", message: "Fichier ICS corrompu ou invalide" };
         }
 
@@ -118,11 +117,6 @@ module.exports = {
             if (start.day < aujourdhui || start.day > demain) {
                 continue;
             }
-
-            // 3. Découpage et vérification multi-salles
-            const roomRegex = /B4[1-2][A-Z]?\s*-\s*(?:[^(]*\()?(?:.*?\s)?(Amphi\s[L-N]|[0-9]+)/i;
-
-            console.log(roomRegex);
 
             const locationLine = rawLocationMatch[1];
 
@@ -179,7 +173,7 @@ module.exports = {
                     }
                 }
             } catch (err) {
-                console.error(`Sauvegarde impossible pour ${location} :`, err);
+                $app.logger().error(`Sauvegarde impossible pour ${location} :`, err);
             }
 
             

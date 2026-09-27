@@ -1,6 +1,8 @@
 /// <reference path="../pb_data/types.d.ts" />
 
 routerAdd("POST", "/api/sync-rooms", (e) => {
+    $apis.requireSuperuserAuth()(e);
+
     const { syncAllRooms } = require(`${__hooks}/utils/rooms.js`);
     let updated = syncAllRooms();
     
