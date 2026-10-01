@@ -12,7 +12,7 @@
 <br />
 <div align="center">
   <a href="https://github.com/BDE-ISATI/isati-backend">
-    <img src="pb_public/logo.png" alt="Logo" width="320" height="320">
+    <img src="pb_public/logo_2026.png" alt="Logo" width="320" height="320">
   </a>
 
   <h3 align="center">ISATI Backend</h3>
