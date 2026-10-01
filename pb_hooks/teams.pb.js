@@ -51,6 +51,24 @@ onRecordEnrich((e) => {
 }, "participation_scores")
 
 
+onRecordEnrich((e) => {
+
+  const { isRevealed } = require(`${__hooks}/utils/weiTeams.js`)
+
+  if (!isRevealed(e)) {
+    e.record.hide("user")
+    e.record.hide("team")
+    e.record.hide("challenge")
+    e.record.hide("scope")
+    e.record.hide("points_awarded")
+    e.record.hide("reviewed_at")
+  }
+
+  e.next()
+
+}, "wei_score_events")
+
+
 onRecordCreateRequest((e) => {
 
   if (e.hasSuperuserAuth()) {
@@ -121,7 +139,7 @@ onRecordsListRequest((e) => {
   checkWeiAccess(e, "teams")
   e.next()
 
-}, "teams", "team_scores", "participation_scores")
+}, "teams", "team_scores", "participation_scores", "wei_score_events")
 
 
 onRecordViewRequest((e) => {
@@ -130,4 +148,4 @@ onRecordViewRequest((e) => {
   checkWeiAccess(e, "teams")
   e.next()
 
-}, "teams", "team_scores", "participation_scores")
+}, "teams", "team_scores", "participation_scores", "wei_score_events")
