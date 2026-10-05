@@ -4,9 +4,9 @@ migrate((app) => {
 
   // update collection data
   unmarshal({
-    "createRule": "@request.auth.roles ?= \"organigramme_member\"",
-    "deleteRule": "@request.auth.roles ?= \"organigramme_member\"",
-    "updateRule": "@request.auth.roles ?= \"organigramme_member\""
+    "createRule": "@request.auth.role.code ?= \"test\"",
+    "deleteRule": "@request.auth.role.code ?= \"test\"",
+    "updateRule": "@request.auth.role.code ?= \"test\""
   }, collection)
 
   return app.save(collection)
@@ -15,9 +15,9 @@ migrate((app) => {
 
   // update collection data
   unmarshal({
-    "createRule": "@request.auth.roles ?= \"organigramme\"",
-    "deleteRule": "@request.auth.roles ?= \"organigramme\"",
-    "updateRule": "@request.auth.roles ?= \"organigramme\""
+    "createRule": null,
+    "deleteRule": null,
+    "updateRule": null
   }, collection)
 
   return app.save(collection)

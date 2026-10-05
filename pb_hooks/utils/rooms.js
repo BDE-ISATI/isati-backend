@@ -1,8 +1,7 @@
 function formatParis(year, month, day, hour, min) {
-    
   const utcDate = new Date(Date.UTC(
     parseInt(year, 10),
-    parseInt(month, 10) - 1, // Les mois commencent à 0 en JS
+    parseInt(month, 10) - 1,
     parseInt(day, 10),
     parseInt(hour, 10),
     parseInt(min, 10)

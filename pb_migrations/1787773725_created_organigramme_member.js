@@ -23,10 +23,10 @@ migrate((app) => {
         "autogeneratePattern": "",
         "help": "",
         "hidden": false,
-        "id": "text376926767",
+        "id": "text1579384326",
         "max": 0,
         "min": 0,
-        "name": "avatar",
+        "name": "name",
         "pattern": "",
         "presentable": false,
         "primaryKey": false,
@@ -35,27 +35,30 @@ migrate((app) => {
         "type": "text"
       },
       {
-        "exceptDomains": null,
         "help": "",
         "hidden": false,
-        "id": "url2225635011",
-        "name": "instagram",
-        "onlyDomains": [
-          "instagram.com"
-        ],
+        "id": "file376926767",
+        "maxSelect": 0,
+        "maxSize": 0,
+        "mimeTypes": null,
+        "name": "avatar",
         "presentable": false,
+        "protected": false,
         "required": false,
         "system": false,
-        "type": "url"
+        "thumbs": [
+          "100x100"
+        ],
+        "type": "file"
       },
       {
         "autogeneratePattern": "",
         "help": "",
         "hidden": false,
-        "id": "text1579384326",
+        "id": "text1466534506",
         "max": 0,
         "min": 0,
-        "name": "name",
+        "name": "role",
         "pattern": "",
         "presentable": false,
         "primaryKey": false,
@@ -83,19 +86,18 @@ migrate((app) => {
         ]
       },
       {
-        "autogeneratePattern": "",
+        "exceptDomains": null,
         "help": "",
         "hidden": false,
-        "id": "text1466534506",
-        "max": 0,
-        "min": 0,
-        "name": "role",
-        "pattern": "",
+        "id": "url2225635011",
+        "name": "instagram",
+        "onlyDomains": [
+          "instagram.com"
+        ],
         "presentable": false,
-        "primaryKey": false,
         "required": false,
         "system": false,
-        "type": "text"
+        "type": "url"
       },
       {
         "hidden": false,
