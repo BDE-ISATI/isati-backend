@@ -1,187 +1,129 @@
-function formatParis(year, month, day, hour, min) {
+const DATE_PATTERN = /(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})/
+
+function formatParis(match) {
+  const [, year, month, day, hour, min] = match
   const utcDate = new Date(Date.UTC(
     parseInt(year, 10),
     parseInt(month, 10) - 1,
     parseInt(day, 10),
     parseInt(hour, 10),
     parseInt(min, 10)
-  ));
+  ))
 
-  const dayStr = utcDate.toLocaleDateString("fr-CA", { 
-    timeZone: "Europe/Paris" 
-  }); 
-  
-  const hourStr = utcDate.toLocaleTimeString("fr-FR", { 
-    timeZone: "Europe/Paris", 
-    hour: "2-digit", 
-    minute: "2-digit" 
-  });
-
-  return { day: dayStr, hour: hourStr };
+  return {
+    day: utcDate.toLocaleDateString("fr-CA", { timeZone: "Europe/Paris" }),
+    hour: utcDate.toLocaleTimeString("fr-FR", { timeZone: "Europe/Paris", hour: "2-digit", minute: "2-digit" }).slice(0, 5),
+  }
 }
 
-module.exports = {
-    syncAllRooms: function () {
-        const configRecords = $app.findAllRecords('listRooms');
-        if (configRecords.length === 0) {
-            return { status: "error", message: "Configuration manquante" };
-        }
+function fail(message) {
+  $app.logger().error(`[sync_rooms] ${message}`)
+  return { status: "error", message: message }
+}
 
-        const config = configRecords[0];
-        const url = config.get("url_ics");
+function syncAllRooms() {
+  const configRecords = $app.findAllRecords("listRooms")
+  if (configRecords.length === 0) {
+    return fail("Configuration manquante dans listRooms")
+  }
 
-        let sallesValides = [];
-        try {
-            // Force la conversion des octets bruts en texte, puis en vrai tableau
-            const rawString = config.getString("rooms_allowed");
-            sallesValides = JSON.parse(rawString);
-        } catch (e) {
-            $app.logger().error("Format JSON invalide dans listRooms");
-        }
-        
-        let res;
+  const config = configRecords[0]
+  const url = config.getString("url_ics")
 
-        try {
-            res = $http.send({ 
-                url: url, 
-                method: "GET",
-                headers: {
-                    "User-Agent": "PocketBase-Sync/1.0"
-                },
-                timeout: 30 
-            });
-        } catch (err) {
-            $app.logger().error("[SYNCHRO ERREUR] Impossible de joindre le serveur ICS :", err);
-            return { status: "error", message: "Échec de connexion au serveur ICS" };
-        }
+  let allowedRooms
+  try {
+    allowedRooms = JSON.parse(config.getString("rooms_allowed"))
+  } catch (_) {
+    allowedRooms = null
+  }
+  if (!Array.isArray(allowedRooms)) {
+    return fail("rooms_allowed doit être un tableau JSON de noms de salles")
+  }
 
-        if (!res || res.statusCode !== 200) {
-            $app.logger().error(`[SYNCHRO ERREUR] Code HTTP invalide reçu : ${res ? res.statusCode : "inconnu"}`);
-            return { status: "error", message: `Erreur serveur ICS : code ${res ? res.statusCode : "inconnu"}` };
-        }
+  let res
+  try {
+    res = $http.send({
+      url: url,
+      method: "GET",
+      headers: { "User-Agent": "PocketBase-Sync/1.0" },
+      timeout: 30,
+    })
+  } catch (err) {
+    return fail(`Impossible de joindre le serveur ICS : ${err}`)
+  }
 
-        const rawData = res.raw || "";
-        if (!rawData.includes("BEGIN:VCALENDAR")) {
-            $app.logger().error("[SYNCHRO ERREUR] La réponse reçue n'est pas un calendrier valide (BEGIN:VCALENDAR manquant)");
-            return { status: "error", message: "Fichier ICS corrompu ou invalide" };
-        }
+  if (!res || res.statusCode !== 200) {
+    return fail(`Erreur serveur ICS : code ${res ? res.statusCode : "inconnu"}`)
+  }
 
-        let events = res.raw.replace(/\r?\n[ \t]/g, "").split("BEGIN:VEVENT");
+  const rawData = res.raw || ""
+  if (!rawData.includes("BEGIN:VCALENDAR")) {
+    return fail("Fichier ICS invalide (BEGIN:VCALENDAR manquant)")
+  }
 
-        // Format :
-        // location -> "102" : [
-        //  {
-        //  day -> "2026-04-04",
-        //  startHour -> "18:30",
-        //  endHour -> "23:15"
-        //  }
-        //]
-        // 
+  const now = new Date()
+  const today = now.toLocaleDateString("fr-CA", { timeZone: "Europe/Paris" })
+  const tomorrowDate = new Date(now)
+  tomorrowDate.setDate(tomorrowDate.getDate() + 1)
+  const tomorrow = tomorrowDate.toLocaleDateString("fr-CA", { timeZone: "Europe/Paris" })
 
-        
-        let cours = {};
-        sallesValides.forEach(salle => {
-            cours[salle] = [];
-        });
+  const schedules = {}
+  for (const room of allowedRooms) {
+    schedules[room] = []
+  }
 
-        const now = new Date();
+  const events = rawData.replace(/\r?\n[ \t]/g, "").split("BEGIN:VEVENT").slice(1)
+  for (const event of events) {
+    const block = event.split("END:VEVENT")[0]
 
-        const aujourdhui = now.toLocaleDateString("fr-CA", { timeZone: "Europe/Paris" });
-        
-        const tomorrow = new Date(now);
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        const demain = tomorrow.toLocaleDateString("fr-CA", { timeZone: "Europe/Paris" });
+    const locationMatch = block.match(/LOCATION:(.*?)(\r?\n[A-Z]|$)/s)
+    const startMatch = block.match(new RegExp("DTSTART.*?:" + DATE_PATTERN.source))
+    const endMatch = block.match(new RegExp("DTEND.*?:" + DATE_PATTERN.source))
+    if (!locationMatch || !startMatch || !endMatch) continue
 
-        for (let i = 1; i < events.length; i++) {
-            const eventBlock = events[i].split("END:VEVENT")[0];
+    const start = formatParis(startMatch)
+    const end = formatParis(endMatch)
+    if (start.day < today || start.day > tomorrow) continue
 
-            // 1. Regex robustes pour les dates et extraction de la ligne LOCATION complète
-            const rawLocationMatch = eventBlock.match(/LOCATION:(.*?)(\r?\n[A-Z]|$)/s);
-            const startingMatch = eventBlock.match(/DTSTART.*?:(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})/);
-            const endingMatch = eventBlock.match(/DTEND.*?:(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})/);
-
-            if (!rawLocationMatch || !startingMatch || !endingMatch) {
-                continue;
-            }
-
-            // 2. Formatage des dates
-            const start = formatParis(
-                startingMatch[1], startingMatch[2], startingMatch[3], startingMatch[4], startingMatch[5]
-            );
-            const end = formatParis(
-                endingMatch[1], endingMatch[2], endingMatch[3], endingMatch[4], endingMatch[5]
-            );
-
-            // Filtrage temporel
-            if (start.day < aujourdhui || start.day > demain) {
-                continue;
-            }
-
-            const locationLine = rawLocationMatch[1];
-
-            for (const salle of sallesValides) {
-                if (locationLine.includes(salle)) {
-                    const cour = {
-                        'day': start.day,
-                        'startHour': start.hour.slice(0, 5),
-                        'endHour': end.hour.slice(0, 5)
-                    };
-
-                    if (!cours[salle]) {
-                        cours[salle] = [];
-                    }
-                    cours[salle].push(cour);
-                }
-            }
-        }
-
-
-        
-        
-
-        const collectionRooms = $app.findCollectionByNameOrId('rooms');
-        const existingRecords = $app.findAllRecords('rooms');
-
-        existingRecords.forEach((record) => {
-            if (!sallesValides.includes(record.get('name'))) {
-                $app.delete(record);
-            }
-        });
-
-        for (const [location, schedule] of Object.entries(cours)) {
-
-            schedule.sort((a, b) => (a.day + a.startHour).localeCompare(b.day + b.startHour));
-            
-            const newChecksum = $security.md5(JSON.stringify(schedule));
-            const existingRecord = existingRecords.find(r => r.get("name") === location)
-
-            try {
-                if (!existingRecord) {
-                    const room = new Record(collectionRooms);
-                    room.set("name", location);
-                    room.set("edt", schedule);
-                    room.set("checksum", newChecksum);
-                    $app.save(room);
-
-                }
-                else {
-                    if (existingRecord.get('checksum') != newChecksum) {
-                        existingRecord.set("edt", schedule)
-                        existingRecord.set("checksum", newChecksum)
-                        $app.save(existingRecord);
-                    }
-                }
-            } catch (err) {
-                $app.logger().error(`Sauvegarde impossible pour ${location} :`, err);
-            }
-
-            
-            
-        };
-
-        
-
-        return { status: "success", parsed_rooms: sallesValides.length };
-
+    for (const room of allowedRooms) {
+      if (locationMatch[1].includes(room)) {
+        schedules[room].push({ day: start.day, startHour: start.hour, endHour: end.hour })
+      }
     }
-};
+  }
+
+  const collection = $app.findCollectionByNameOrId("rooms")
+  const existingRecords = $app.findAllRecords("rooms")
+
+  for (const record of existingRecords) {
+    if (!allowedRooms.includes(record.getString("name"))) {
+      $app.delete(record)
+    }
+  }
+
+  for (const [name, schedule] of Object.entries(schedules)) {
+    schedule.sort((a, b) => (a.day + a.startHour).localeCompare(b.day + b.startHour))
+    const checksum = $security.md5(JSON.stringify(schedule))
+    const existing = existingRecords.find((r) => r.getString("name") === name)
+
+    try {
+      if (!existing) {
+        const room = new Record(collection)
+        room.set("name", name)
+        room.set("edt", schedule)
+        room.set("checksum", checksum)
+        $app.save(room)
+      } else if (existing.getString("checksum") !== checksum) {
+        existing.set("edt", schedule)
+        existing.set("checksum", checksum)
+        $app.save(existing)
+      }
+    } catch (err) {
+      $app.logger().error(`[sync_rooms] Sauvegarde impossible pour ${name} : ${err}`)
+    }
+  }
+
+  return { status: "success", parsed_rooms: allowedRooms.length }
+}
+
+module.exports = { syncAllRooms }

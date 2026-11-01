@@ -1,13 +1,10 @@
 /// <reference path="../pb_data/types.d.ts" />
 
-routerAdd("POST", "/api/sync-rooms", (e) => {
-    $apis.requireSuperuserAuth()(e);
+routerAdd("POST", "/api/isati/sync-rooms", (e) => {
 
-    const { syncAllRooms } = require(`${__hooks}/utils/rooms.js`);
-    let updated = syncAllRooms();
-    
-    return e.json(200, { 
-        "status": "success", 
-        "updated_rooms": updated 
-    });
-});
+  const { syncAllRooms } = require(`${__hooks}/utils/rooms.js`)
+  const result = syncAllRooms()
+
+  return e.json(result.status === "success" ? 200 : 500, result)
+
+}, $apis.requireSuperuserAuth())

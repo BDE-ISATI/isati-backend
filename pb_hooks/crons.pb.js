@@ -38,6 +38,6 @@ cronAdd("purge_proofs", "0 3 * * *", () => {
 })
 
 cronAdd("sync_rooms", "*/15 * * * *", () => {
-    const { syncAllRooms } = require(`${__hooks}/utils/rooms.js`);
-    syncAllRooms();
+  const { syncAllRooms } = require(`${__hooks}/utils/rooms.js`)
+  syncAllRooms()
 })
